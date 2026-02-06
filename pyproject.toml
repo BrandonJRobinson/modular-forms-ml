@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modular-forms-ml"
+version = "0.1.0"
+description = "Generate datasets of modular forms for machine learning experiments"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Brandon Robinson"}
+]
+keywords = ["modular forms", "number theory", "machine learning", "dataset"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+dependencies = [
+    "numpy>=1.21",
+    "scipy>=1.7",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch>=1.10",
+    "matplotlib>=3.4",
+    "seaborn>=0.11",
+]
+dev = [
+    "pytest>=7.0",
+]
+
+[project.scripts]
+modular-forms-dataset = "modular_forms.dataset:main"
+
+[project.urls]
+Homepage = "https://github.com/brandonrobinson/modular-forms-ml"
+Repository = "https://github.com/brandonrobinson/modular-forms-ml"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modular_forms*"]
