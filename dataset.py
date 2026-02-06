@@ -122,6 +122,42 @@ def generate_fake_forms(
     return fake_data
 
 
+def generate_corrupted_forms(
+    modular_forms,
+    noise_level=0.10,
+    verbose=True
+):
+    """
+    Generate corrupted versions of modular forms (Strategy 2).
+    
+    These are harder to distinguish than asymptotic fakes because they
+    preserve more of the algebraic structure.
+    
+    Args:
+        modular_forms: List of (coeffs, q_start, weight, level, type_id) tuples
+        noise_level: Multiplicative noise level (0.10 = 10% noise)
+        verbose: Print progress
+    
+    Returns:
+        list of tuples: (corrupted_coeffs, q_start, weight, level=0, type_id=4)
+        type_id=4 indicates corrupted data
+    """
+    if verbose:
+        print(f"Generating {len(modular_forms)} corrupted samples ({noise_level*100:.0f}% noise)...")
+    
+    corrupted = []
+    for coeffs, q_start, weight, level, _ in modular_forms:
+        # Add multiplicative noise
+        noise = 1 + noise_level * np.random.randn(len(coeffs))
+        corrupted_coeffs = coeffs * noise
+        corrupted.append((corrupted_coeffs, q_start, weight, 0, 4))  # type_id=4 for corrupted
+    
+    if verbose:
+        print(f"  Generated {len(corrupted)} corrupted forms.")
+    
+    return corrupted
+
+
 def _align_to_grid(items, start_n=-10, end_n=100):
     """Align samples to a common coefficient grid [q^start_n, q^end_n]."""
     X = []
@@ -158,6 +194,7 @@ def generate_dataset(
     k_range=(-10, 10),
     modular_only=False,
     fakes_only=False,
+    corruption_noise=None,
     verbose=True
 ):
     """
@@ -175,6 +212,7 @@ def generate_dataset(
         k_range: Weight range
         modular_only: Generate only modular forms
         fakes_only: Generate only fake forms
+        corruption_noise: If set, use Strategy 2 (corrupted data) with this noise level
         verbose: Print progress
     
     Returns:
@@ -199,15 +237,27 @@ def generate_dataset(
     
     if not modular_only:
         n_modular = len(all_items)
-        if n_fakes is None:
-            n_fakes = n_modular if n_modular > 0 else 1000
         
-        fake_data = generate_fake_forms(
-            count=n_fakes,
-            order=order,
-            k_range=k_range,
-            verbose=verbose
-        )
+        if corruption_noise is not None:
+            # Strategy 2: Corrupted real data
+            if n_modular == 0:
+                raise ValueError("Cannot use corruption_noise without modular data")
+            fake_data = generate_corrupted_forms(
+                modular_forms=modular_data,
+                noise_level=corruption_noise,
+                verbose=verbose
+            )
+        else:
+            # Strategy 1: Asymptotic fakes
+            if n_fakes is None:
+                n_fakes = n_modular if n_modular > 0 else 1000
+            
+            fake_data = generate_fake_forms(
+                count=n_fakes,
+                order=order,
+                k_range=k_range,
+                verbose=verbose
+            )
         all_items.extend(fake_data)
         labels.extend([0] * len(fake_data))
     
@@ -238,6 +288,7 @@ Examples:
   python -m modular_forms.dataset                          # Balanced dataset
   python -m modular_forms.dataset --modular-only           # Only modular forms
   python -m modular_forms.dataset --fakes-only             # Only fake forms
+  python -m modular_forms.dataset --corruption-noise 0.10  # Strategy 2: 10% noise
   python -m modular_forms.dataset --n-polynomials 500 -o custom.npz
         """
     )
@@ -268,6 +319,9 @@ Examples:
     parser.add_argument("--k-max", type=int, default=10,
                         help="Maximum weight (default: 10)")
     
+    parser.add_argument("--corruption-noise", type=float, default=None,
+                        help="Use Strategy 2: corrupt real data with noise (e.g., 0.10 for 10%%)")
+    
     parser.add_argument("-q", "--quiet", action="store_true",
                         help="Suppress progress output")
     
@@ -287,6 +341,7 @@ Examples:
         k_range=(args.k_min, args.k_max),
         modular_only=args.modular_only,
         fakes_only=args.fakes_only,
+        corruption_noise=args.corruption_noise,
         verbose=not args.quiet
     )
 
